@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cukrovinky.cz, výkonnostný dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --ink:#1e2444; --orange:#ff6b2c; --slate:#7c83b0; --card:#ffffff;
+  --border:#e8eaf2; --bg:#f7f8fc;
+  --good:#1e9e6a; --watch:#d99000; --bad:#d6453d;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.55}
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px 80px}
+h1,h2,h3,.fig{font-family:'Poppins',sans-serif}
+.dot{color:var(--orange)}
+
+.cover{padding:64px 0 40px;border-bottom:1px solid var(--border)}
+.cover .eyebrow{font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--slate);margin-bottom:14px}
+.cover h1{font-size:clamp(34px,5vw,54px);font-weight:800;letter-spacing:-.02em;line-height:1.05}
+.cover .sub{margin-top:14px;color:var(--slate);font-size:16px;max-width:760px}
+.meta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-top:32px}
+.meta-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+.meta-card .l{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--slate)}
+.meta-card .v{font-weight:600;margin-top:6px;font-size:14px}
+
+/* tabs */
+.tabs{display:flex;gap:10px;flex-wrap:wrap;margin:40px 0 8px;position:sticky;top:0;background:var(--bg);padding:14px 0;z-index:10;border-bottom:1px solid var(--border)}
+.tab-btn{font-family:'Poppins',sans-serif;font-weight:700;font-size:14px;border:1px solid var(--border);background:var(--card);color:var(--ink);border-radius:10px;padding:10px 18px;cursor:pointer;display:flex;align-items:center;gap:10px}
+.tab-btn .n{background:#eef0f7;color:var(--slate);border-radius:7px;padding:1px 8px;font-size:12px}
+.tab-btn.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+.tab-btn.active .n{background:var(--orange);color:#fff}
+.tab{display:none}
+.tab.active{display:block}
+
+.page{margin-top:48px}
+.page-bar{display:flex;align-items:center;gap:14px;padding-bottom:14px;border-bottom:2px solid var(--ink);margin-bottom:24px;flex-wrap:wrap}
+.chip{font-family:'Poppins',sans-serif;font-weight:700;font-size:14px;background:var(--orange);color:#fff;border-radius:8px;padding:4px 10px}
+.page-bar h2{font-size:21px;font-weight:700;flex:1;min-width:200px}
+.src{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--slate)}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(172px,1fr));gap:14px;margin-bottom:24px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+.kpi .l{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--slate);min-height:28px}
+.kpi .fig{font-size:24px;font-weight:700;letter-spacing:-.01em;margin-top:6px;white-space:nowrap}
+.kpi .fig.bad{color:var(--bad)}
+.kpi .u{font-size:12px;color:var(--slate);margin-top:2px}
+.pill{display:inline-block;font-size:12px;font-weight:700;border-radius:99px;padding:2px 9px;margin-top:8px}
+.pill.up{background:#e4f5ed;color:var(--good)}
+.pill.down{background:#fbe9e8;color:var(--bad)}
+.pill.neutral{background:#eef0f7;color:var(--slate)}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:22px}
+.panel h3{font-size:15px;font-weight:700;margin-bottom:4px}
+.panel .note{font-size:12.5px;color:var(--slate);margin-bottom:14px}
+.chart-box{position:relative;height:300px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--slate);text-align:right;padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td{padding:9px 10px;border-bottom:1px solid var(--border);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td.name{font-weight:600}
+td .tag{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:6px;padding:2px 7px;margin-left:8px;vertical-align:1px}
+.tag.top{background:#e4f5ed;color:var(--good)}
+.tag.low{background:#fbe9e8;color:var(--bad)}
+.tag.off{background:#eef0f7;color:var(--slate)}
+tfoot td{font-weight:700;border-bottom:none;border-top:2px solid var(--ink)}
+.d-up{color:var(--good);font-weight:700}
+.d-down{color:var(--bad);font-weight:700}
+.bad-num{color:var(--bad);font-weight:700}
+.muted{color:var(--slate)}
+.barcell{position:relative;display:block}
+.barcell .bg{position:absolute;right:0;top:50%;transform:translateY(-50%);height:18px;background:rgba(255,107,44,.16);border-radius:4px;z-index:0}
+.barcell .tx{position:relative;z-index:1}
+.tbl-scroll{overflow-x:auto}
+
+.flag{display:flex;gap:14px;align-items:flex-start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px}
+.flag .t{flex-shrink:0;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;border-radius:8px;padding:4px 10px;margin-top:1px}
+.t.dobre{background:#e4f5ed;color:var(--good)}
+.t.pozor{background:#fdf3df;color:var(--watch)}
+.t.problem{background:#fbe9e8;color:var(--bad)}
+.comment p{max-width:880px;margin-bottom:16px;font-size:15.5px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}.chart-box{height:250px}}
+@media print{body{background:#fff}.tab{display:block!important}.tabs{display:none}.page{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="cover">
+  <div class="eyebrow">fokus<span class="dot">.</span>studio &nbsp;×&nbsp; Cukrovinky.cz</div>
+  <h1>Výkon<span class="dot">.</span></h1>
+  <p class="sub">Tri porovnávacie obdobia, hodnoty rozpísané po mesiacoch pre každý zdroj samostatne. Metriky sa medzi zdrojmi nesčítavajú, obrat e-shopu je zdrojom pravdy.</p>
+  <div class="meta-grid">
+    <div class="meta-card"><div class="l">Mena</div><div class="v">CZK (e-shop bez DPH)</div></div>
+    <div class="meta-card"><div class="l">Obdobie 1</div><div class="v">Január až máj 2026 oproti januáru až máju 2025</div></div>
+    <div class="meta-card"><div class="l">Obdobie 2</div><div class="v">Jún 2025 až máj 2026 oproti júnu 2024 až máju 2025</div></div>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="tab-btn active" data-tab="t1"><span class="n">01</span>Január až máj 2026 vs január až máj 2025</button>
+  <button class="tab-btn" data-tab="t2"><span class="n">02</span>Jún 2025 až máj 2026 vs jún 2024 až máj 2025</button>
+</nav>
+
+<div class="tab active" id="tab-t1"></div>
+<div class="tab" id="tab-t2"></div>
+
+<!-- META CREATIVE TYPE, whole period -->
+<section class="page">
+  <div class="page-bar"><span class="chip">M</span><h2>Meta Ads, najkonverznejší typ kampane</h2><span class="src">Celé obdobie · atribúcia Meta</span></div>
+  <div class="panel">
+    <p class="note" style="margin-bottom:18px">Reklamy v Meta Ads sú zatriedené podľa typu kreatívy z názvu reklamy a kampane: DABA (dynamický katalóg, vrátane „Catalog sales“), Banner, Video a Carousel. Skupina Ostatné obsahuje staršie neoznačené kreatívy. Hodnoty sú za celé obdobie exportu a sčítavajú sa do celkového súčtu Meta Ads.</p>
+    <div class="kpis" id="kpi-meta-cr" style="margin-bottom:22px"></div>
+    <div class="grid2">
+      <div>
+        <h3 style="font-size:14px;margin-bottom:10px">ROAS podľa typu</h3>
+        <div class="chart-box" style="height:280px"><canvas id="ch-meta-cr-roas"></canvas></div>
+      </div>
+      <div>
+        <h3 style="font-size:14px;margin-bottom:10px">Podiel na nákladoch a hodnote nákupov</h3>
+        <div class="chart-box" style="height:280px"><canvas id="ch-meta-cr-share"></canvas></div>
+      </div>
+    </div>
+    <div class="tbl-scroll" style="margin-top:18px"><table id="tbl-meta-cr"></table></div>
+  </div>
+</section>
+
+<!-- GOOGLE ADS, whole period -->
+<section class="page">
+  <div class="page-bar"><span class="chip">G</span><h2>Google Ads, rozpad po kampaniach za celé obdobie</h2><span class="src">1. 2. 2024 až 12. 6. 2026 · CZK</span></div>
+  <div class="panel">
+    <p class="note" style="margin-bottom:18px">Mesačné náklady, hodnota konverzií a ROAS sú v každom tabe vyššie. Tento blok ukazuje rozpad po kampaniach, ktorý má časový rozmer iba ako súhrn za celé obdobie. Drobné rozdiely oproti súčtu mesiacov vyplývajú z atribučných okien a zaokrúhľovania.</p>
+    <div class="kpis" id="kpi-gads" style="margin-bottom:22px"></div>
+    <div class="tbl-scroll"><table id="tbl-gads"></table></div>
+  </div>
+</section>
+
+<!-- ANOMALIE -->
+
+
+
+</div>
+
+<script>
+const D = {"eshop": {"t1cur": {"ym": ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05"], "obrat": [152601.2, 171526.11, 226427.11, 165233.41, 206579.44], "obj": [293, 317, 407, 249, 280], "tot_obrat": 922367.27, "tot_obj": 1546, "aov": 596.6153104786546}, "t1prev": {"ym": ["2025-01", "2025-02", "2025-03", "2025-04", "2025-05"], "obrat": [134726.95, 181816.17, 245258.64, 226415.09, 247978.04], "obj": [265, 368, 422, 355, 346], "tot_obrat": 1036194.89, "tot_obj": 1756, "aov": 590.0882061503416}, "t2cur": {"ym": ["2025-06", "2025-07", "2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05"], "obrat": [233655.53, 169647.78, 192742.32, 185320.27, 283339.31, 449851.27, 165910.45, 152601.2, 171526.11, 226427.11, 165233.41, 206579.44], "obj": [322, 260, 311, 297, 344, 591, 348, 293, 317, 407, 249, 280], "tot_obrat": 2602834.2, "tot_obj": 4019, "aov": 647.6322965911918}, "t2prev": {"ym": ["2024-06", "2024-07", "2024-08", "2024-09", "2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03", "2025-04", "2025-05"], "obrat": [187484.48, 126200.45, 152806.7, 176270.75, 187257.97, 351461.44, 166007.29, 134726.95, 181816.17, 245258.64, 226415.09, 247978.04], "obj": [261, 196, 236, 260, 271, 575, 312, 265, 368, 422, 355, 346], "tot_obrat": 2383683.97, "tot_obj": 3867, "aov": 616.4168528575123}, "t3cur": {"ym": ["2024-06", "2024-07", "2024-08", "2024-09", "2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03", "2025-04", "2025-05"], "obrat": [187484.48, 126200.45, 152806.7, 176270.75, 187257.97, 351461.44, 166007.29, 134726.95, 181816.17, 245258.64, 226415.09, 247978.04], "obj": [261, 196, 236, 260, 271, 575, 312, 265, 368, 422, 355, 346], "tot_obrat": 2383683.97, "tot_obj": 3867, "aov": 616.4168528575123}, "t3prev": {"ym": ["2024-02", "2024-03", "2024-04", "2024-05"], "obrat": [50478.54, 185792.17, 162105.13, 252511.85], "obj": [66, 273, 224, 333], "tot_obrat": 650887.69, "tot_obj": 896, "aov": 726.4371540178572}}, "meta": {"t1cur": {"ym": ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05"], "spend": [6184.56, 6346.73, 7564.28, 6905.31, 6972.78], "value": [24100.86, 41369.79, 49408.86, 20713.04, 22593.59], "purchases": [56, 79, 104, 43, 40], "tot_spend": 33973.66, "tot_value": 158186.14, "tot_purch": 322, "roas": 4.656140668977084, "pno": 0.21477014357895072, "cpa": 105.50826086956523}, "t1prev": {"ym": ["2025-01", "2025-02", "2025-03", "2025-04", "2025-05"], "spend": [6320.0, 6501.55, 7301.7, 7093.85, 8492.53], "value": [21737.3, 41567.82, 60141.76, 38954.19, 56029.17], "purchases": [59, 85, 97, 63, 82], "tot_spend": 35709.63, "tot_value": 218430.24, "tot_purch": 386, "roas": 6.1168441117984145, "pno": 0.16348299576102648, "cpa": 92.51199481865284}, "t2cur": {"ym": ["2025-06", "2025-07", "2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05"], "spend": [9055.81, 9293.3, 9124.43, 6404.66, 9339.1, 10216.37, 8293.57, 6184.56, 6346.73, 7564.28, 6905.31, 6972.78], "value": [44906.88, 44633.97, 44556.98, 29533.06, 52429.87, 104735.25, 34434.45, 24100.86, 41369.79, 49408.86, 20713.04, 22593.59], "purchases": [65, 75, 72, 51, 80, 176, 81, 56, 79, 104, 43, 40], "tot_spend": 95700.9, "tot_value": 513416.6, "tot_purch": 922, "roas": 5.364804301735929, "pno": 0.1864000891283998, "cpa": 103.7970715835141}, "t2prev": {"ym": ["2024-06", "2024-07", "2024-08", "2024-09", "2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03", "2025-04", "2025-05"], "spend": [9072.05, 9033.02, 10284.62, 11836.04, 10811.01, 14687.55, 9904.41, 6320.0, 6501.55, 7301.7, 7093.85, 8492.53], "value": [50570.04, 30865.22, 37989.99, 48173.2, 34720.29, 90841.68, 26909.21, 21737.3, 41567.82, 60141.76, 38954.19, 56029.17], "purchases": [75, 61, 60, 88, 66, 184, 60, 59, 85, 97, 63, 82], "tot_spend": 111338.33, "tot_value": 538499.87, "tot_purch": 980, "roas": 4.8366081115102055, "pno": 0.20675646588364074, "cpa": 113.61054081632653}, "t3cur": {"ym": ["2024-06", "2024-07", "2024-08", "2024-09", "2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03", "2025-04", "2025-05"], "spend": [9072.05, 9033.02, 10284.62, 11836.04, 10811.01, 14687.55, 9904.41, 6320.0, 6501.55, 7301.7, 7093.85, 8492.53], "value": [50570.04, 30865.22, 37989.99, 48173.2, 34720.29, 90841.68, 26909.21, 21737.3, 41567.82, 60141.76, 38954.19, 56029.17], "purchases": [75, 61, 60, 88, 66, 184, 60, 59, 85, 97, 63, 82], "tot_spend": 111338.33, "tot_value": 538499.87, "tot_purch": 980, "roas": 4.8366081115102055, "pno": 0.20675646588364074, "cpa": 113.61054081632653}, "t3prev": {"ym": ["2023-06", "2023-07", "2023-08", "2023-09", "2023-10", "2023-11", "2023-12", "2024-01", "2024-02", "2024-03", "2024-04", "2024-05"], "spend": [11065.67, 12492.46, 14630.22, 12597.5, 15323.97, 12882.79, 13188.69, 14363.13, 12212.43, 12036.82, 8863.5, 9012.28], "value": [109655.16, 69982.0, 85388.63, 59187.29, 66970.93, 101265.33, 52122.96, 77033.02, 55509.1, 78955.04, 41841.59, 66759.11], "purchases": [96, 81, 89, 68, 62, 109, 58, 56, 66, 141, 71, 112], "tot_spend": 148669.46, "tot_value": 864670.16, "tot_purch": 1009, "roas": 5.816057716224973, "pno": 0.17193777104555105, "cpa": 147.3433696729435}}, "sklik": {"t1cur": {"ym": ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05"], "cost": [3109.82, 3108.73, 3637.54, 2350.61, 2148.23], "rev": [1665.0, 19760.0, 17554.0, 14836.0, 19891.0], "tot_cost": 14354.93, "tot_rev": 73706.0, "roas": 5.134542627515425, "pno": 0.19475931403142213}, "t1prev": {"ym": ["2025-01", "2025-02", "2025-03", "2025-04", "2025-05"], "cost": [1182.87, 3651.3, 1822.36, 1648.37, 1648.37], "rev": [5839.0, 10539.0, 0.0, 3828.0, 2590.0], "tot_cost": 9953.27, "tot_rev": 22796.0, "roas": 2.2903025839749147, "pno": 0.43662353044393754}, "t2cur": {"ym": ["2025-06", "2025-07", "2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05"], "cost": [2377.6, 2136.58, 2186.47, 2349.74, 2954.72, 3334.42, 2652.36, 3109.82, 3108.73, 3637.54, 2350.61, 2148.23], "rev": [6770.0, 7964.0, 13068.0, 11170.0, 21745.0, 39730.0, 11792.0, 1665.0, 19760.0, 17554.0, 14836.0, 19891.0], "tot_cost": 32346.82, "tot_rev": 185945.0, "roas": 5.748478521227125, "pno": 0.17395907391970744}, "t2prev": {"ym": ["2024-06", "2024-07", "2024-08", "2024-09", "2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03", "2025-04", "2025-05"], "cost": [226.86, 297.42, 530.39, 625.0, 1019.84, 2336.33, 1201.12, 1182.87, 3651.3, 1822.36, 1648.37, 1648.37], "rev": [1698.0, 209.0, 4541.0, 5561.0, 9259.0, 8781.0, 9908.0, 5839.0, 10539.0, 0.0, 3828.0, 2590.0], "tot_cost": 16190.23, "tot_rev": 62753.0, "roas": 3.875979525923968, "pno": 0.2579992988383025}, "t3cur": {"ym": ["2024-06", "2024-07", "2024-08", "2024-09", "2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03", "2025-04", "2025-05"], "cost": [226.86, 297.42, 530.39, 625.0, 1019.84, 2336.33, 1201.12, 1182.87, 3651.3, 1822.36, 1648.37, 1648.37], "rev": [1698.0, 209.0, 4541.0, 5561.0, 9259.0, 8781.0, 9908.0, 5839.0, 10539.0, 0.0, 3828.0, 2590.0], "tot_cost": 16190.23, "tot_rev": 62753.0, "roas": 3.875979525923968, "pno": 0.2579992988383025}, "t3prev": {"ym": ["2024-03", "2024-04", "2024-05"], "cost": [790.77, 2405.53, 1748.8], "rev": [0.0, 3916.0, 2823.0], "tot_cost": 4945.1, "tot_rev": 6739.0, "roas": 1.3627631392691755, "pno": 0.7338032349013207}}, "ga4": {"t1cur": {"ym": ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05"], "rev": [95772.1, 121400.01, 135255.49, 107835.0, 152366.76], "items": [4898, 7003, 7212, 5273, 7946], "buyers": [206, 236, 284, 172, 202], "first": [190, 217, 264, 153, 179], "tot_rev": 612629.35, "tot_items": 32332, "tot_buyers": 1100, "tot_first": 1003, "first_rate": 0.9118181818181819}, "t1prev": {"ym": ["2025-01", "2025-02", "2025-03", "2025-04", "2025-05"], "rev": [88519.37, 116885.86, 153157.56, 106573.07, 113008.29], "items": [4656, 5471, 7811, 5847, 6423], "buyers": [198, 280, 173, 12, 14], "first": [178, 264, 155, 8, 8], "tot_rev": 578144.15, "tot_items": 30208, "tot_buyers": 677, "tot_first": 613, "first_rate": 0.9054652880354506}, "t2cur": {"ym": ["2025-06", "2025-07", "2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05"], "rev": [111111.14, 115037.68, 146151.6, 111154.03, 195701.91, 305936.76, 105418.08, 95772.1, 121400.01, 135255.49, 107835.0, 152366.76], "items": [8528, 7300, 7804, 5229, 8653, 10947, 3197, 4898, 7003, 7212, 5273, 7946], "buyers": [16, 15, 26, 12, 46, 428, 238, 206, 236, 284, 172, 202], "first": [10, 9, 20, 7, 35, 402, 222, 190, 217, 264, 153, 179], "tot_rev": 1703140.55, "tot_items": 83990, "tot_buyers": 1881, "tot_first": 1708, "first_rate": 0.9080276448697502}, "t2prev": {"ym": ["2024-06", "2024-07", "2024-08", "2024-09", "2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03", "2025-04", "2025-05"], "rev": [131699.16, 91538.47, 111268.67, 137276.08, 138742.95, 244043.79, 119211.35, 88519.37, 116885.86, 153157.56, 106573.07, 113008.29], "items": [9732, 5826, 6039, 7306, 7246, 11071, 4149, 4656, 5471, 7811, 5847, 6423], "buyers": [191, 153, 184, 205, 190, 410, 234, 198, 280, 173, 12, 14], "first": [170, 129, 170, 196, 174, 375, 215, 178, 264, 155, 8, 8], "tot_rev": 1551924.62, "tot_items": 81577, "tot_buyers": 2244, "tot_first": 2042, "first_rate": 0.9099821746880571}, "t3cur": {"ym": ["2024-06", "2024-07", "2024-08", "2024-09", "2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03", "2025-04", "2025-05"], "rev": [131699.16, 91538.47, 111268.67, 137276.08, 138742.95, 244043.79, 119211.35, 88519.37, 116885.86, 153157.56, 106573.07, 113008.29], "items": [9732, 5826, 6039, 7306, 7246, 11071, 4149, 4656, 5471, 7811, 5847, 6423], "buyers": [191, 153, 184, 205, 190, 410, 234, 198, 280, 173, 12, 14], "first": [170, 129, 170, 196, 174, 375, 215, 178, 264, 155, 8, 8], "tot_rev": 1551924.62, "tot_items": 81577, "tot_buyers": 2244, "tot_first": 2042, "first_rate": 0.9099821746880571}, "t3prev": {"ym": ["2024-02", "2024-03", "2024-04", "2024-05"], "rev": [95494.85, 130876.86, 121678.7, 191122.04], "items": [6597, 8332, 7666, 14405], "buyers": [103, 221, 172, 261], "first": [92, 204, 152, 231], "tot_rev": 539172.45, "tot_items": 37000, "tot_buyers": 757, "tot_first": 679, "first_rate": 0.8969616908850726}}, "gads": {"period": ["2024-02-01", "2026-06-12"], "currency": "CZK", "cost": 202623.93, "value": 1371668.38, "impr": 5145741, "clicks": 76693, "conv": 2880.01, "roas": 6.769528061172242, "pno": 0.14772078510696587, "ctr": 0.014904170264302071, "cpc": 2.6420133519356392, "cpa": 70.35528696080915, "cr": 0.03755244937608387, "campaigns": [{"name": "PMAX | CZ", "status": "Aktívne", "type": "Max. výkon. kampaň", "impr": 4138711, "clicks": 68371, "cost": 176238.65, "value": 1295004.56, "conv": 2743.94, "roas": 7.3480167942729935}, {"name": "F-CZ-Shopping", "status": "Pozastavená", "type": "Nakupovanie", "impr": 664717, "clicks": 4039, "cost": 10797.1, "value": 35150.49, "conv": 68.03, "roas": 3.2555491752415}, {"name": "F-CZ-P-max-Kampane", "status": "Pozastavená", "type": "Max. výkon. kampaň", "impr": 181857, "clicks": 1922, "cost": 8001.79, "value": 39494.49, "conv": 64.04, "roas": 4.9357068855843504}, {"name": "RMKT | CZ", "status": "Pozastavená", "type": "Zobrazenie", "impr": 158824, "clicks": 2254, "cost": 6186.84, "value": 800.91, "conv": 1.0, "roas": 0.12945380840623}, {"name": "F-CZ-SEARCH", "status": "Pozastavená", "type": "Vyhľadávanie", "impr": 1632, "clicks": 107, "cost": 1399.55, "value": 1217.93, "conv": 3.0, "roas": 0.8702297166946519}]}, "meta_creative": {"rows": [{"typ": "DABA (katalóg)", "spend": 276651.21, "purch": 2457, "value": 1688941.11, "impr": 3306416, "clicks": 46361, "roas": 6.104947489656741, "cpa": 112.59715506715507, "cr": 0.05299713120942171, "aov": 687.3997191697192, "cost_share": 0.7549976381353765, "value_share": 0.83163207680424}, {"typ": "Banner", "spend": 34019.23, "purch": 247, "value": 151792.77, "impr": 304044, "clicks": 4802, "roas": 4.46196959778337, "cpa": 137.72967611336034, "cr": 0.0514369012911287, "aov": 614.5456275303643, "cost_share": 0.09284050592507491, "value_share": 0.07474253294655628}, {"typ": "Video", "spend": 11210.02, "purch": 66, "value": 34962.39, "impr": 113665, "clicks": 1720, "roas": 3.118851705884557, "cpa": 169.84878787878787, "cr": 0.03837209302325582, "aov": 529.7331818181818, "cost_share": 0.030592812601290747, "value_share": 0.017215428550815363}, {"typ": "Carousel", "spend": 2480.99, "purch": 30, "value": 8554.35, "impr": 28193, "clicks": 1253, "roas": 3.4479582747209787, "cpa": 82.69966666666666, "cr": 0.023942537909018357, "aov": 285.14500000000004, "cost_share": 0.006770769555779233, "value_share": 0.004212149147231279}, {"typ": "Ostatné", "spend": 42065.14, "purch": 222, "value": 146624.76, "impr": 600083, "clicks": 4120, "roas": 3.485659622195481, "cpa": 189.4826126126126, "cr": 0.053883495145631066, "aov": 660.4718918918919, "cost_share": 0.11479827378247848, "value_share": 0.07219781255115713}], "tot_spend": 366426.59, "tot_value": 2030875.38, "tot_purch": 3022, "roas": 5.542379934818594}, "gads_monthly": {"t1cur": {"ym": ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05"], "cost": [10519.22, 9115.37, 9117.82, 9060.85, 9120.05], "value": [52680.31, 57298.85, 75179.22, 48335.54, 63217.97], "conv": [124.96, 140.08, 176.57, 107.48, 112.96], "impr": [179913, 161321, 146922, 144744, 141753], "tot_cost": 46933.31, "tot_value": 296711.89, "tot_conv": 662.05, "tot_impr": 774653, "roas": 6.321989435648158, "pno": 0.1581780561608097, "cpa": 70.89088437429197}, "t1prev": {"ym": ["2025-01", "2025-02", "2025-03", "2025-04", "2025-05"], "cost": [7604.53, 7590.61, 7595.61, 7566.55, 7586.98], "value": [36119.82, 54408.61, 69722.77, 39630.4, 33164.24], "conv": [93.02, 162.49, 137.66, 72.84, 66.53], "impr": [186560, 284401, 307382, 237986, 200551], "tot_cost": 37944.28, "tot_value": 233045.84, "tot_conv": 532.54, "tot_impr": 1216880, "roas": 6.141791068377104, "pno": 0.16281895441686495, "cpa": 71.25151162354001}, "t2cur": {"ym": ["2025-06", "2025-07", "2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05"], "cost": [7229.48, 7431.12, 7596.54, 7599.97, 7591.48, 9654.4, 10576.72, 10519.22, 9115.37, 9117.82, 9060.85, 9120.05], "value": [33155.25, 36598.44, 51171.72, 45786.26, 85217.67, 159557.04, 42637.89, 52680.31, 57298.85, 75179.22, 48335.54, 63217.97], "conv": [70.48, 86.05, 113.91, 101.04, 111.19, 242.95, 134.9, 124.96, 140.08, 176.57, 107.48, 112.96], "impr": [155752, 147778, 159653, 147372, 136136, 164054, 192031, 179913, 161321, 146922, 144744, 141753], "tot_cost": 104613.02, "tot_value": 750836.16, "tot_conv": 1522.57, "tot_impr": 1877429, "roas": 7.177272580411119, "pno": 0.13932869189464717, "cpa": 68.7081841885759}, "t2prev": {"ym": ["2024-06", "2024-07", "2024-08", "2024-09", "2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03", "2025-04", "2025-05"], "cost": [4332.07, 4556.16, 4569.05, 4608.04, 4959.01, 6324.18, 7235.04, 7604.53, 7590.61, 7595.61, 7566.55, 7586.98], "value": [28232.43, 23918.14, 33216.06, 35297.24, 24611.97, 72671.88, 37247.87, 36119.82, 54408.61, 69722.77, 39630.4, 33164.24], "conv": [62.97, 52.99, 69.01, 70.03, 66.99, 158.02, 103.95, 93.02, 162.49, 137.66, 72.84, 66.53], "impr": [157409, 149697, 171303, 136837, 125074, 151654, 182124, 186560, 284401, 307382, 237986, 200551], "tot_cost": 74527.83, "tot_value": 488241.43, "tot_conv": 1116.5, "tot_impr": 2290978, "roas": 6.551129021199195, "pno": 0.15264544428357912, "cpa": 66.75130317957904}}, "ga4_channels": {"order": ["Organic Search", "Direct", "Cross-network", "Paid Social", "Organic Social", "Paid Search", "Referral", "Paid Shopping", "Unassigned", "Display", "Organic Video"], "windows": {"t1cur": {"rows": [{"channel": "Organic Search", "rev": 111485.2, "sess": 6488, "ke": 177, "rev_share": 0.1831302224472883, "rev_per_sess": 17.18329224830456, "cr": 0.027281134401972874}, {"channel": "Direct", "rev": 172532.62, "sess": 7448, "ke": 257, "rev_share": 0.2834092513330898, "rev_per_sess": 23.16495973321697, "cr": 0.03450590762620838}, {"channel": "Cross-network", "rev": 185264.14, "sess": 10483, "ke": 448, "rev_share": 0.30432257510708527, "rev_per_sess": 17.67281694858342, "cr": 0.04273585805590003}, {"channel": "Paid Social", "rev": 49392.02, "sess": 3468, "ke": 121, "rev_share": 0.08113338446132913, "rev_per_sess": 14.242220287773932, "cr": 0.03489042675893887}, {"channel": "Organic Social", "rev": 12125.22, "sess": 1224, "ke": 21, "rev_share": 0.01991739028634577, "rev_per_sess": 9.90622551633987, "cr": 0.01715686274509804}, {"channel": "Paid Search", "rev": 42435.92, "sess": 1099, "ke": 78, "rev_share": 0.06970700553666155, "rev_per_sess": 38.6132119699727, "cr": 0.07097361237488627}, {"channel": "Referral", "rev": 35300.93, "sess": 443, "ke": 40, "rev_share": 0.05798677460715545, "rev_per_sess": 79.68607232279909, "cr": 0.09029345372460497}, {"channel": "Paid Shopping", "rev": 0, "sess": 0, "ke": 0, "rev_share": 0, "rev_per_sess": null, "cr": null}, {"channel": "Unassigned", "rev": 239.49, "sess": 160, "ke": 2, "rev_share": 0.00039339622104473965, "rev_per_sess": 1.4968124812499999, "cr": 0.0125}, {"channel": "Display", "rev": 0, "sess": 0, "ke": 0, "rev_share": 0, "rev_per_sess": null, "cr": null}, {"channel": "Organic Video", "rev": 0, "sess": 0, "ke": 0, "rev_share": 0, "rev_per_sess": null, "cr": null}], "tot_rev": 608775.54, "tot_sess": 30813}, "t1prev": {"rows": [{"channel": "Organic Search", "rev": 226819.05, "sess": 7915, "ke": 318, "rev_share": 0.3923062032719191, "rev_per_sess": 28.656860381174983, "cr": 0.040176879343019584}, {"channel": "Direct", "rev": 73705.08, "sess": 3279, "ke": 96, "rev_share": 0.1274802981538131, "rev_per_sess": 22.477914008844156, "cr": 0.0292772186642269}, {"channel": "Cross-network", "rev": 55324.96, "sess": 3903, "ke": 161, "rev_share": 0.09569004465493507, "rev_per_sess": 14.174983353574174, "cr": 0.04125032026646169}, {"channel": "Paid Social", "rev": 51310.7, "sess": 3518, "ke": 122, "rev_share": 0.08874698097501606, "rev_per_sess": 14.58519045167709, "cr": 0.03467879476975554}, {"channel": "Organic Social", "rev": 78964.85, "sess": 3293, "ke": 129, "rev_share": 0.13657759605280037, "rev_per_sess": 23.97960832280595, "cr": 0.0391740054661403}, {"channel": "Paid Search", "rev": 48811.13, "sess": 2360, "ke": 127, "rev_share": 0.08442372499574502, "rev_per_sess": 20.682682210169492, "cr": 0.053813559322033896}, {"channel": "Referral", "rev": 26340.86, "sess": 957, "ke": 60, "rev_share": 0.045559148597351176, "rev_per_sess": 27.524409672936258, "cr": 0.06269592476489028}, {"channel": "Paid Shopping", "rev": 0, "sess": 0, "ke": 0, "rev_share": 0, "rev_per_sess": null, "cr": null}, {"channel": "Unassigned", "rev": 3780.74, "sess": 138, "ke": 6, "rev_share": 0.006539167476084633, "rev_per_sess": 27.396666652173913, "cr": 0.043478260869565216}, {"channel": "Display", "rev": 12388.39, "sess": 698, "ke": 20, "rev_share": 0.02142695777676088, "rev_per_sess": 17.748409595988537, "cr": 0.02865329512893983}, {"channel": "Organic Video", "rev": 722.64, "sess": 10, "ke": 1, "rev_share": 0.0012498780455746442, "rev_per_sess": 72.263999, "cr": 0.1}], "tot_rev": 578168.4, "tot_sess": 26071}, "t2cur": {"rows": [{"channel": "Organic Search", "rev": 425196.49, "sess": 23626, "ke": 648, "rev_share": 0.2502205484276371, "rev_per_sess": 17.996973260010158, "cr": 0.027427410479979684}, {"channel": "Direct", "rev": 338452.59, "sess": 18199, "ke": 477, "rev_share": 0.19917331090999393, "rev_per_sess": 18.597317998131764, "cr": 0.026210231331391835}, {"channel": "Cross-network", "rev": 418124.88, "sess": 23962, "ke": 825, "rev_share": 0.24605903211029115, "rev_per_sess": 17.449498382522325, "cr": 0.03442951339621067}, {"channel": "Paid Social", "rev": 201139.42, "sess": 14384, "ke": 401, "rev_share": 0.11836696008660874, "rev_per_sess": 13.983552560205785, "cr": 0.027878197997775307}, {"channel": "Organic Social", "rev": 116888.92, "sess": 7573, "ke": 211, "rev_share": 0.06878704399217196, "rev_per_sess": 15.434955770236366, "cr": 0.027862141819622342}, {"channel": "Paid Search", "rev": 100141.32, "sess": 3147, "ke": 138, "rev_share": 0.058931380116042764, "rev_per_sess": 31.821201118207817, "cr": 0.0438512869399428}, {"channel": "Referral", "rev": 95164.0, "sess": 2178, "ke": 122, "rev_share": 0.05600231618053599, "rev_per_sess": 43.693296629476585, "cr": 0.05601469237832874}, {"channel": "Paid Shopping", "rev": 0, "sess": 0, "ke": 0, "rev_share": 0, "rev_per_sess": null, "cr": null}, {"channel": "Unassigned", "rev": 4179.24, "sess": 521, "ke": 7, "rev_share": 0.0024594081767184877, "rev_per_sess": 8.021573896353166, "cr": 0.013435700575815739}, {"channel": "Display", "rev": 0.0, "sess": 28, "ke": 0, "rev_share": 0.0, "rev_per_sess": 0.0, "cr": 0.0}, {"channel": "Organic Video", "rev": 0, "sess": 0, "ke": 0, "rev_share": 0, "rev_per_sess": null, "cr": null}], "tot_rev": 1699286.86, "tot_sess": 93618}, "t2prev": {"rows": [{"channel": "Organic Search", "rev": 495836.61, "sess": 18165, "ke": 684, "rev_share": 0.31948770802161686, "rev_per_sess": 27.296262581668042, "cr": 0.037654830718414536}, {"channel": "Direct", "rev": 231491.14, "sess": 7054, "ke": 277, "rev_share": 0.14915916321370526, "rev_per_sess": 32.817003146299975, "cr": 0.039268500141763536}, {"channel": "Cross-network", "rev": 188955.25, "sess": 10069, "ke": 472, "rev_share": 0.12175155791959148, "rev_per_sess": 18.766039320885888, "cr": 0.046876551792630845}, {"channel": "Paid Social", "rev": 208561.72, "sess": 10286, "ke": 421, "rev_share": 0.13438480441212808, "rev_per_sess": 20.27627063601011, "cr": 0.04092941862726036}, {"channel": "Organic Social", "rev": 198796.04, "sess": 8608, "ke": 349, "rev_share": 0.1280923796334132, "rev_per_sess": 23.09433552904275, "cr": 0.04054368029739777}, {"channel": "Paid Search", "rev": 116694.68, "sess": 5640, "ke": 270, "rev_share": 0.07519113177663589, "rev_per_sess": 20.690546107801417, "cr": 0.047872340425531915}, {"channel": "Referral", "rev": 84597.26, "sess": 2289, "ke": 154, "rev_share": 0.05450945780106797, "rev_per_sess": 36.958173951070336, "cr": 0.0672782874617737}, {"channel": "Paid Shopping", "rev": 0.0, "sess": 1, "ke": 0, "rev_share": 0.0, "rev_per_sess": 0.0, "cr": 0.0}, {"channel": "Unassigned", "rev": 13930.25, "sess": 343, "ke": 17, "rev_share": 0.008975827051902802, "rev_per_sess": 40.61297386005831, "cr": 0.04956268221574344}, {"channel": "Display", "rev": 12388.39, "sess": 807, "ke": 20, "rev_share": 0.007982343813254472, "rev_per_sess": 15.351164681536554, "cr": 0.024783147459727387}, {"channel": "Organic Video", "rev": 722.64, "sess": 10, "ke": 1, "rev_share": 0.0004656263566840131, "rev_per_sess": 72.263999, "cr": 0.1}], "tot_rev": 1551973.98, "tot_sess": 63272}}}, "eshop_blended": {"t1prev": {"cost": 83607.18, "roas_attr": 5.6726238105387585, "roas_eshop": 12.393611290322195, "eshop_rev": 1036194.89, "adval": 474272.08}, "t1cur": {"cost": 95261.9, "roas_attr": 5.548955353609366, "roas_eshop": 9.682436210069294, "eshop_rev": 922367.27, "adval": 528604.03}, "t2prev": {"cost": 202056.39, "roas_attr": 5.392030907807468, "roas_eshop": 11.79712242706108, "eshop_rev": 2383683.97, "adval": 1089494.3}, "t2cur": {"cost": 232660.74, "roas_attr": 6.23310043628332, "roas_eshop": 11.187251446032537, "eshop_rev": 2602834.2, "adval": 1450197.76}}};
+
+const fmt = (n, dec=0) => n==null ? "—" :
+  n.toLocaleString("sk-SK",{minimumFractionDigits:dec,maximumFractionDigits:dec}).replace(/\u00a0/g," ");
+const czk = (n, dec=0) => n==null ? "—" : fmt(n,dec)+" Kč";
+const pct = (n, dec=2) => n==null ? "—" : fmt(n*100,dec)+" %";
+const MES = ["Január","Február","Marec","Apríl","Máj","Jún","Júl","August","September","Október","November","December"];
+const mname = ym => { const [y,m]=ym.split("-"); return MES[+m-1]+" "+y; };
+function delta(cur, prev){ return (prev==null||prev===0||cur==null) ? null : (cur-prev)/prev*100; }
+function dCell(cur, prev, goodUp=true){
+  const d = delta(cur, prev);
+  if(d===null) return '<span class="muted">—</span>';
+  const good = goodUp ? d>=0 : d<=0;
+  return `<span class="${good?'d-up':'d-down'}">${d>=0?'+':''}${fmt(d,1)} %</span>`;
+}
+function pill(cur, prev, goodUp=true){
+  const d = delta(cur, prev);
+  if(d===null) return null;
+  const good = goodUp ? d>=0 : d<=0;
+  return {cls: good?'up':'down', tx:(d>=0?'+':'')+fmt(d,1)+' %'};
+}
+function kpiHTML(items){
+  return '<div class="kpis">'+items.map(i=>`
+    <div class="kpi"><div class="l">${i.l}</div><div class="fig ${i.bad?'bad':''}">${i.v}</div>
+    ${i.u?`<div class="u">${i.u}</div>`:""}
+    ${i.pill?`<span class="pill ${i.pill.cls}">${i.pill.tx}</span>`:""}</div>`).join("")+'</div>';
+}
+function alignRows(curYm, prevYm){
+  // pair by position (windows are equal length, same month sequence)
+  const n = Math.max(curYm.length, prevYm.length);
+  const rows = [];
+  for(let i=0;i<n;i++) rows.push({c:i<curYm.length?i:null, p:i<prevYm.length?i:null});
+  return rows;
+}
+
+/* ---------------- tab builder ---------------- */
+function buildTab(key, el, opts){
+  const cur = k => D[k][key+"cur"], prev = k => D[k][key+"prev"];
+  const cmp = opts.compare; // global compare on/off
+  const E=cur("eshop"), Ep=prev("eshop");
+  const M=cur("meta"),  Mp=prev("meta");
+  const S=cur("sklik"), Sp=prev("sklik");
+  const A=cur("ga4"),   Ap=prev("ga4");
+  let h = "";
+
+  /* ---- ESHOP ---- */
+  h += `<section class="page"><div class="page-bar"><span class="chip">01</span><h2>E-shop</h2><span class="src">${opts.label}</span></div>`;
+  h += kpiHTML([
+    {l:"Obrat bez DPH", v:czk(E.tot_obrat), pill:cmp?pill(E.tot_obrat,Ep.tot_obrat):null, u:cmp?("predtým "+czk(Ep.tot_obrat)):null},
+    {l:"Objednávky", v:fmt(E.tot_obj), pill:cmp?pill(E.tot_obj,Ep.tot_obj):null, u:cmp?("predtým "+fmt(Ep.tot_obj)):null},
+    {l:"Priemerná hodnota objednávky", v:czk(E.aov,0), pill:cmp?pill(E.aov,Ep.aov):null, u:cmp?("predtým "+czk(Ep.aov,0)):null}
+  ]);
+  h += `<div class="panel"><h3>Obrat a objednávky po mesiacoch</h3>`;
+  if(cmp){
+    h += `<p class="note">Mesiac vedľa mesiaca, ${opts.prevLabel} oproti ${opts.curLabel}.</p><div class="tbl-scroll"><table><thead><tr>
+      <th>Mesiac</th><th>Obrat ${opts.prevShort}</th><th>Obrat ${opts.curShort}</th><th>Δ obrat</th>
+      <th>Objedn. ${opts.prevShort}</th><th>Objedn. ${opts.curShort}</th><th>Δ objedn.</th></tr></thead><tbody>`;
+    E.ym.forEach((ym,i)=>{
+      h += `<tr><td class="name">${mname(ym)}<span class="muted"> / ${mname(Ep.ym[i]).toLowerCase()}</span></td>
+        <td>${fmt(Ep.obrat[i])} Kč</td><td>${fmt(E.obrat[i])} Kč</td><td>${dCell(E.obrat[i],Ep.obrat[i])}</td>
+        <td>${fmt(Ep.obj[i])}</td><td>${fmt(E.obj[i])}</td><td>${dCell(E.obj[i],Ep.obj[i])}</td></tr>`;
+    });
+    h += `</tbody><tfoot><tr><td>Spolu</td><td>${fmt(Ep.tot_obrat)} Kč</td><td>${fmt(E.tot_obrat)} Kč</td><td>${dCell(E.tot_obrat,Ep.tot_obrat)}</td>
+      <td>${fmt(Ep.tot_obj)}</td><td>${fmt(E.tot_obj)}</td><td>${dCell(E.tot_obj,Ep.tot_obj)}</td></tr></tfoot></table></div>`;
+  } else {
+    h += `<p class="note">Absolútne hodnoty, predchádzajúce obdobie nie je v dátach kompletné.</p><div class="tbl-scroll"><table><thead><tr>
+      <th>Mesiac</th><th>Obrat bez DPH</th><th>Objednávky</th><th>Priem. hodnota obj.</th></tr></thead><tbody>`;
+    E.ym.forEach((ym,i)=>{
+      h += `<tr><td class="name">${mname(ym)}</td><td>${fmt(E.obrat[i])} Kč</td><td>${fmt(E.obj[i])}</td><td>${fmt(E.obj[i]?E.obrat[i]/E.obj[i]:null,0)} Kč</td></tr>`;
+    });
+    h += `</tbody><tfoot><tr><td>Spolu</td><td>${fmt(E.tot_obrat)} Kč</td><td>${fmt(E.tot_obj)}</td><td>${fmt(E.aov,0)} Kč</td></tr></tfoot></table></div>`;
+  }
+  h += `<div class="chart-box" style="margin-top:18px"><canvas id="ch-${key}-eshop"></canvas></div></div>`;
+
+  /* blended ROAS & ad cost across the period */
+  const Bc = D.eshop_blended[key+"cur"], Bp = D.eshop_blended[key+"prev"];
+  h += `<div class="panel"><h3>ROAS a reklamné náklady za obdobie</h3>
+    <p class="note">Súčet reklamných nákladov troch platforiem (Google Ads, Meta Ads, Sklik) a dva pohľady na ROAS: <b>atribuovaný</b> ROAS (súčet hodnôt konverzií platforiem k nákladom) a <b>blended ROAS</b> voči celkovému obratu e-shopu bez DPH (MER). Hodnoty za ${opts.prevLabel} oproti ${opts.curLabel}.</p>
+    <div class="kpis" style="margin-bottom:0">
+      <div class="kpi"><div class="l">Reklamné náklady ${opts.curShort}</div><div class="fig">${czk(Bc.cost)}</div>
+        <span class="pill ${(Bc.cost>=Bp.cost)?'down':'up'}">${(Bc.cost>=Bp.cost?'+':'')+fmt((Bc.cost-Bp.cost)/Bp.cost*100,1)} %</span>
+        <div class="u">predtým ${czk(Bp.cost)}</div></div>
+      <div class="kpi"><div class="l">Atribuovaný ROAS ${opts.curShort}</div><div class="fig">${fmt(Bc.roas_attr,2)}</div>
+        <span class="pill ${(Bc.roas_attr>=Bp.roas_attr)?'up':'down'}">${(Bc.roas_attr>=Bp.roas_attr?'+':'')+fmt((Bc.roas_attr-Bp.roas_attr)/Bp.roas_attr*100,1)} %</span>
+        <div class="u">predtým ${fmt(Bp.roas_attr,2)}</div></div>
+      <div class="kpi"><div class="l">Blended ROAS (MER) ${opts.curShort}</div><div class="fig">${fmt(Bc.roas_eshop,2)}</div>
+        <span class="pill ${(Bc.roas_eshop>=Bp.roas_eshop)?'up':'down'}">${(Bc.roas_eshop>=Bp.roas_eshop?'+':'')+fmt((Bc.roas_eshop-Bp.roas_eshop)/Bp.roas_eshop*100,1)} %</span>
+        <div class="u">obrat e-shopu / náklady</div></div>
+    </div>
+    <div class="grid2" style="margin-top:18px">
+      <div><h3 style="font-size:14px;margin-bottom:10px">Reklamné náklady (Kč)</h3><div class="chart-box" style="height:260px"><canvas id="ch-${key}-blendcost"></canvas></div></div>
+      <div><h3 style="font-size:14px;margin-bottom:10px">ROAS</h3><div class="chart-box" style="height:260px"><canvas id="ch-${key}-blendroas"></canvas></div></div>
+    </div>
+  </div></section>`;
+
+  /* ---- META ---- */
+  const metaCmp = opts.metaCompare ?? cmp;
+  h += `<section class="page"><div class="page-bar"><span class="chip">02</span><h2>Meta Ads</h2><span class="src">${opts.label} · atribúcia Meta</span></div>`;
+  h += kpiHTML([
+    {l:"ROAS", v:fmt(M.roas,2), pill:metaCmp?pill(M.roas,Mp.roas):null, u:metaCmp?("predtým "+fmt(Mp.roas,2)):null},
+    {l:"PNO", v:pct(M.pno), pill:metaCmp?pill(M.pno,Mp.pno,false):null, u:metaCmp?("predtým "+pct(Mp.pno)):null},
+    {l:"Hodnota nákupov", v:czk(M.tot_value), pill:metaCmp?pill(M.tot_value,Mp.tot_value):null, u:metaCmp?("predtým "+czk(Mp.tot_value)):null},
+    {l:"Náklady", v:czk(M.tot_spend), pill:metaCmp?pill(M.tot_spend,Mp.tot_spend,false):null, u:metaCmp?("predtým "+czk(Mp.tot_spend)):null},
+    {l:"Nákupy", v:fmt(M.tot_purch), pill:metaCmp?pill(M.tot_purch,Mp.tot_purch):null, u:metaCmp?("predtým "+fmt(Mp.tot_purch)):null},
+    {l:"Cena za nákup", v:czk(M.cpa,2), pill:metaCmp?pill(M.cpa,Mp.cpa,false):null, u:metaCmp?("predtým "+czk(Mp.cpa,2)):null}
+  ]);
+  h += `<div class="panel"><h3>Náklady a hodnota nákupov po mesiacoch</h3>`;
+  if(metaCmp){
+    h += `<p class="note">Mesiac vedľa mesiaca, ${opts.metaPrevLabel||opts.prevLabel} oproti ${opts.curLabel}.</p><div class="tbl-scroll"><table><thead><tr>
+      <th>Mesiac</th><th>Náklady ${opts.metaPrevShort||opts.prevShort}</th><th>Náklady ${opts.curShort}</th>
+      <th>Hodnota ${opts.metaPrevShort||opts.prevShort}</th><th>Hodnota ${opts.curShort}</th><th>Δ hodnota</th><th>Nákupy ${opts.curShort}</th></tr></thead><tbody>`;
+    M.ym.forEach((ym,i)=>{
+      h += `<tr><td class="name">${mname(ym)}<span class="muted"> / ${mname(Mp.ym[i]).toLowerCase()}</span></td>
+        <td>${fmt(Mp.spend[i])} Kč</td><td>${fmt(M.spend[i])} Kč</td>
+        <td>${fmt(Mp.value[i])} Kč</td><td>${fmt(M.value[i])} Kč</td><td>${dCell(M.value[i],Mp.value[i])}</td><td>${fmt(M.purchases[i])}</td></tr>`;
+    });
+    h += `</tbody><tfoot><tr><td>Spolu</td><td>${fmt(Mp.tot_spend)} Kč</td><td>${fmt(M.tot_spend)} Kč</td>
+      <td>${fmt(Mp.tot_value)} Kč</td><td>${fmt(M.tot_value)} Kč</td><td>${dCell(M.tot_value,Mp.tot_value)}</td><td>${fmt(M.tot_purch)}</td></tr></tfoot></table></div>`;
+  } else {
+    h += `<p class="note">Absolútne hodnoty.</p><div class="tbl-scroll"><table><thead><tr>
+      <th>Mesiac</th><th>Náklady</th><th>Hodnota nákupov</th><th>Nákupy</th><th>ROAS</th></tr></thead><tbody>`;
+    M.ym.forEach((ym,i)=>{
+      const r = M.spend[i] ? M.value[i]/M.spend[i] : null;
+      h += `<tr><td class="name">${mname(ym)}</td><td>${fmt(M.spend[i])} Kč</td><td>${fmt(M.value[i])} Kč</td><td>${fmt(M.purchases[i])}</td><td class="${(r!=null&&r<1)?'bad-num':''}">${fmt(r,2)}</td></tr>`;
+    });
+    h += `</tbody><tfoot><tr><td>Spolu</td><td>${fmt(M.tot_spend)} Kč</td><td>${fmt(M.tot_value)} Kč</td><td>${fmt(M.tot_purch)}</td><td>${fmt(M.roas,2)}</td></tr></tfoot></table></div>`;
+  }
+  h += `<div class="chart-box" style="margin-top:18px"><canvas id="ch-${key}-meta"></canvas></div></div></section>`;
+
+  /* ---- SKLIK ---- */
+  h += `<section class="page"><div class="page-bar"><span class="chip">03</span><h2>Sklik</h2><span class="src">${opts.label} · CZK</span></div>`;
+  h += kpiHTML([
+    {l:"ROAS", v:fmt(S.roas,2), pill:cmp?pill(S.roas,Sp.roas):null, u:cmp?("predtým "+fmt(Sp.roas,2)):null},
+    {l:"PNO", v:pct(S.pno), pill:cmp?pill(S.pno,Sp.pno,false):null, u:cmp?("predtým "+pct(Sp.pno)):null},
+    {l:"Výnosy bez DPH", v:czk(S.tot_rev), pill:cmp?pill(S.tot_rev,Sp.tot_rev):null, u:cmp?("predtým "+czk(Sp.tot_rev)):null},
+    {l:"Náklady", v:czk(S.tot_cost), pill:cmp?pill(S.tot_cost,Sp.tot_cost,false):null, u:cmp?("predtým "+czk(Sp.tot_cost)):null}
+  ]);
+  h += `<div class="panel"><h3>Náklady a výnosy po mesiacoch</h3>`;
+  if(cmp){
+    h += `<p class="note">Mesiac vedľa mesiaca. Mesiace 1/2026 až 5/2026 boli v exporte označené druhýkrát ako 1/2025 až 5/2025 a sú vedené podľa chronologického poradia riadkov.</p>
+      <div class="tbl-scroll"><table><thead><tr>
+      <th>Mesiac</th><th>Náklady ${opts.prevShort}</th><th>Náklady ${opts.curShort}</th>
+      <th>Výnosy ${opts.prevShort}</th><th>Výnosy ${opts.curShort}</th><th>Δ výnosy</th></tr></thead><tbody>`;
+    S.ym.forEach((ym,i)=>{
+      h += `<tr><td class="name">${mname(ym)}<span class="muted"> / ${mname(Sp.ym[i]).toLowerCase()}</span></td>
+        <td>${fmt(Sp.cost[i])} Kč</td><td>${fmt(S.cost[i])} Kč</td>
+        <td class="${Sp.rev[i]===0?'muted':''}">${fmt(Sp.rev[i])} Kč</td><td class="${S.rev[i]===0?'muted':''}">${fmt(S.rev[i])} Kč</td>
+        <td>${dCell(S.rev[i],Sp.rev[i])}</td></tr>`;
+    });
+    h += `</tbody><tfoot><tr><td>Spolu</td><td>${fmt(Sp.tot_cost)} Kč</td><td>${fmt(S.tot_cost)} Kč</td>
+      <td>${fmt(Sp.tot_rev)} Kč</td><td>${fmt(S.tot_rev)} Kč</td><td>${dCell(S.tot_rev,Sp.tot_rev)}</td></tr></tfoot></table></div>`;
+  } else {
+    h += `<p class="note">Absolútne hodnoty, Sklik beží od marca 2024.</p><div class="tbl-scroll"><table><thead><tr>
+      <th>Mesiac</th><th>Náklady</th><th>Výnosy bez DPH</th><th>ROAS</th><th>PNO</th></tr></thead><tbody>`;
+    S.ym.forEach((ym,i)=>{
+      const r = S.cost[i] ? S.rev[i]/S.cost[i] : null;
+      const p = S.rev[i] ? S.cost[i]/S.rev[i] : null;
+      h += `<tr><td class="name">${mname(ym)}</td><td>${fmt(S.cost[i])} Kč</td><td>${fmt(S.rev[i])} Kč</td>
+        <td class="${(r!=null&&r<1)?'bad-num':''}">${fmt(r,2)}</td><td>${p==null?'—':pct(p)}</td></tr>`;
+    });
+    h += `</tbody><tfoot><tr><td>Spolu</td><td>${fmt(S.tot_cost)} Kč</td><td>${fmt(S.tot_rev)} Kč</td><td>${fmt(S.roas,2)}</td><td>${pct(S.pno)}</td></tr></tfoot></table></div>`;
+  }
+  h += `<div class="chart-box" style="margin-top:18px"><canvas id="ch-${key}-sklik"></canvas></div></div></section>`;
+
+  /* ---- GA4 ---- */
+  h += `<section class="page"><div class="page-bar"><span class="chip">04</span><h2>GA4</h2><span class="src">${opts.label} · CZK</span></div>`;
+  h += kpiHTML([
+    {l:"Výnosy z položiek", v:czk(A.tot_rev), pill:cmp?pill(A.tot_rev,Ap.tot_rev):null, u:cmp?("predtým "+czk(Ap.tot_rev)):null},
+    {l:"Zakúpené položky", v:fmt(A.tot_items), pill:cmp?pill(A.tot_items,Ap.tot_items):null, u:cmp?("predtým "+fmt(Ap.tot_items)):null},
+    {l:"Kupujúci", v:fmt(A.tot_buyers), u:"od apríla do októbra 2025 výpadok merania"},
+    {l:"Miera prvonákupcov", v:pct(A.first_rate,1)}
+  ]);
+  h += `<div class="panel"><h3>Výnosy z položiek a kupujúci po mesiacoch</h3>`;
+  if(cmp){
+    h += `<p class="note">Mesiac vedľa mesiaca. Počty kupujúcich od apríla do októbra 2025 sú postihnuté výpadkom merania.</p>
+      <div class="tbl-scroll"><table><thead><tr>
+      <th>Mesiac</th><th>Výnosy ${opts.prevShort}</th><th>Výnosy ${opts.curShort}</th><th>Δ výnosy</th>
+      <th>Kupujúci ${opts.prevShort}</th><th>Kupujúci ${opts.curShort}</th></tr></thead><tbody>`;
+    A.ym.forEach((ym,i)=>{
+      h += `<tr><td class="name">${mname(ym)}<span class="muted"> / ${mname(Ap.ym[i]).toLowerCase()}</span></td>
+        <td>${fmt(Ap.rev[i])} Kč</td><td>${fmt(A.rev[i])} Kč</td><td>${dCell(A.rev[i],Ap.rev[i])}</td>
+        <td>${fmt(Ap.buyers[i])}</td><td>${fmt(A.buyers[i])}</td></tr>`;
+    });
+    h += `</tbody><tfoot><tr><td>Spolu</td><td>${fmt(Ap.tot_rev)} Kč</td><td>${fmt(A.tot_rev)} Kč</td><td>${dCell(A.tot_rev,Ap.tot_rev)}</td>
+      <td>${fmt(Ap.tot_buyers)}</td><td>${fmt(A.tot_buyers)}</td></tr></tfoot></table></div>`;
+  } else {
+    h += `<p class="note">Absolútne hodnoty.</p><div class="tbl-scroll"><table><thead><tr>
+      <th>Mesiac</th><th>Výnosy z položiek</th><th>Zakúpené položky</th><th>Kupujúci</th><th>Prvonákupcovia</th></tr></thead><tbody>`;
+    A.ym.forEach((ym,i)=>{
+      h += `<tr><td class="name">${mname(ym)}</td><td>${fmt(A.rev[i])} Kč</td><td>${fmt(A.items[i])}</td><td>${fmt(A.buyers[i])}</td><td>${fmt(A.first[i])}</td></tr>`;
+    });
+    h += `</tbody><tfoot><tr><td>Spolu</td><td>${fmt(A.tot_rev)} Kč</td><td>${fmt(A.tot_items)}</td><td>${fmt(A.tot_buyers)}</td><td>${fmt(A.tot_first)}</td></tr></tfoot></table></div>`;
+  }
+  h += `<div class="chart-box" style="margin-top:18px"><canvas id="ch-${key}-ga4"></canvas></div></div></section>`;
+
+  /* ---- GA4 ACQUISITION CHANNELS ---- */
+  const CHcur = D.ga4_channels.windows[key+"cur"], CHprev = D.ga4_channels.windows[key+"prev"];
+  h += `<section class="page"><div class="page-bar"><span class="chip">05</span><h2>GA4, akvizičné kanály</h2><span class="src">${opts.label} · CZK</span></div>`;
+  h += `<div class="panel"><h3>Výnosy podľa skupiny kanálov relácie</h3>
+    <p class="note">Predvolená skupina kanálov v GA4, výnosy a relácie za ${opts.prevLabel} oproti ${opts.curLabel}. Výnosy sú z reportu akvizície a líšia sa od výnosov z položiek v predchádzajúcej sekcii (iný report, iná metrika).</p>
+    <div class="tbl-scroll"><table><thead><tr>
+      <th>Kanál</th><th>Výnosy ${opts.prevShort}</th><th>Výnosy ${opts.curShort}</th><th>Δ výnosy</th>
+      <th>Podiel ${opts.curShort}</th><th>Relácie ${opts.curShort}</th><th>Výnos/relácia ${opts.curShort}</th></tr></thead><tbody>`;
+  const topCur = CHcur.rows.reduce((a,b)=>b.rev>a.rev?b:a).channel;
+  CHcur.rows.forEach((rc,i)=>{
+    const rp = CHprev.rows[i]; // same channel order
+    if(rc.rev===0 && rp.rev===0) return;
+    const tag = rc.channel===topCur ? '<span class="tag top">najviac výnosov</span>' : '';
+    h += `<tr><td class="name">${rc.channel}${tag}</td>
+      <td>${fmt(rp.rev)} Kč</td><td>${fmt(rc.rev)} Kč</td><td>${dCell(rc.rev,rp.rev)}</td>
+      <td>${pct(rc.rev_share,1)}</td><td>${fmt(rc.sess)}</td><td>${czk(rc.rev_per_sess,1)}</td></tr>`;
+  });
+  h += `</tbody><tfoot><tr><td>Spolu</td><td>${fmt(CHprev.tot_rev)} Kč</td><td>${fmt(CHcur.tot_rev)} Kč</td><td>${dCell(CHcur.tot_rev,CHprev.tot_rev)}</td>
+    <td>100,0 %</td><td>${fmt(CHcur.tot_sess)}</td><td>${czk(CHcur.tot_sess?CHcur.tot_rev/CHcur.tot_sess:null,1)}</td></tr></tfoot></table></div>
+    <div class="chart-box" style="margin-top:18px"><canvas id="ch-${key}-channels"></canvas></div></div></section>`;
+
+  /* ---- GOOGLE ADS, monthly ---- */
+  const GAcur = D.gads_monthly[key+"cur"], GAprev = D.gads_monthly[key+"prev"];
+  h += `<section class="page"><div class="page-bar"><span class="chip">06</span><h2>Google Ads</h2><span class="src">${opts.label} · CZK</span></div>`;
+  h += kpiHTML([
+    {l:"ROAS", v:fmt(GAcur.roas,2), pill:pill(GAcur.roas,GAprev.roas), u:"predtým "+fmt(GAprev.roas,2)},
+    {l:"PNO", v:pct(GAcur.pno), pill:pill(GAcur.pno,GAprev.pno,false), u:"predtým "+pct(GAprev.pno)},
+    {l:"Hodnota konverzií", v:czk(GAcur.tot_value), pill:pill(GAcur.tot_value,GAprev.tot_value), u:"predtým "+czk(GAprev.tot_value)},
+    {l:"Náklady", v:czk(GAcur.tot_cost), pill:pill(GAcur.tot_cost,GAprev.tot_cost,false), u:"predtým "+czk(GAprev.tot_cost)},
+    {l:"Konverzie", v:fmt(GAcur.tot_conv,0), pill:pill(GAcur.tot_conv,GAprev.tot_conv), u:"predtým "+fmt(GAprev.tot_conv,0)},
+    {l:"Zobrazenia", v:fmt(GAcur.tot_impr), pill:pill(GAcur.tot_impr,GAprev.tot_impr), u:"predtým "+fmt(GAprev.tot_impr)}
+  ]);
+  h += `<div class="panel"><h3>Náklady a hodnota konverzií po mesiacoch</h3>
+    <p class="note">Mesiac vedľa mesiaca, ${opts.prevLabel} oproti ${opts.curLabel}. Hodnota konverzií je atribuovaná Google Ads.</p>
+    <div class="tbl-scroll"><table><thead><tr>
+    <th>Mesiac</th><th>Náklady ${opts.prevShort}</th><th>Náklady ${opts.curShort}</th>
+    <th>Hodnota ${opts.prevShort}</th><th>Hodnota ${opts.curShort}</th><th>Δ hodnota</th><th>Konv. ${opts.curShort}</th></tr></thead><tbody>`;
+  GAcur.ym.forEach((ym,i)=>{
+    h += `<tr><td class="name">${mname(ym)}<span class="muted"> / ${mname(GAprev.ym[i]).toLowerCase()}</span></td>
+      <td>${fmt(GAprev.cost[i])} Kč</td><td>${fmt(GAcur.cost[i])} Kč</td>
+      <td>${fmt(GAprev.value[i])} Kč</td><td>${fmt(GAcur.value[i])} Kč</td><td>${dCell(GAcur.value[i],GAprev.value[i])}</td>
+      <td>${fmt(GAcur.conv[i],0)}</td></tr>`;
+  });
+  h += `</tbody><tfoot><tr><td>Spolu</td><td>${fmt(GAprev.tot_cost)} Kč</td><td>${fmt(GAcur.tot_cost)} Kč</td>
+    <td>${fmt(GAprev.tot_value)} Kč</td><td>${fmt(GAcur.tot_value)} Kč</td><td>${dCell(GAcur.tot_value,GAprev.tot_value)}</td>
+    <td>${fmt(GAcur.tot_conv,0)}</td></tr></tfoot></table></div>
+    <div class="chart-box" style="margin-top:18px"><canvas id="ch-${key}-gads"></canvas></div></div></section>`;
+
+  el.innerHTML = h;
+
+  /* ---- charts ---- */
+  const labels = (key==="t1")
+    ? E.ym.map(ym=>MES[+ym.split("-")[1]-1])
+    : E.ym.map(ym=>{const[y,m]=ym.split("-");return MES[+m-1].slice(0,3)+" "+y.slice(2);});
+  const OR="#ff6b2c", INK="#1e2444", SL="rgba(124,131,176,.55)";
+  const grid={color:"#eef0f7"};
+  const mkOpts = unit => ({maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
+    scales:{y:{grid,ticks:{callback:v=>fmt(v)}},x:{grid:{display:false},ticks:{maxRotation:0,autoSkip:true}}},
+    plugins:{legend:{position:"bottom"},tooltip:{callbacks:{label:c=>c.dataset.label+": "+fmt(c.parsed.y)+(unit||"")}}}});
+
+  function grouped(id, curD, prevD, curL, prevL){
+    new Chart(document.getElementById(id),{type:"bar",
+      data:{labels,datasets:[
+        {label:prevL,data:prevD,backgroundColor:SL,borderRadius:3},
+        {label:curL,data:curD,backgroundColor:"rgba(255,107,44,.8)",borderRadius:3}
+      ]},options:mkOpts(" Kč")});
+  }
+  function single(id, sets){
+    new Chart(document.getElementById(id),{data:{labels,datasets:sets},options:mkOpts(" Kč")});
+  }
+
+  if(cmp){
+    grouped(`ch-${key}-eshop`, E.obrat, Ep.obrat, "Obrat "+opts.curShort, "Obrat "+opts.prevShort);
+    grouped(`ch-${key}-sklik`, S.rev, Sp.rev, "Výnosy "+opts.curShort, "Výnosy "+opts.prevShort);
+    grouped(`ch-${key}-ga4`, A.rev, Ap.rev, "Výnosy "+opts.curShort, "Výnosy "+opts.prevShort);
+  } else {
+    single(`ch-${key}-eshop`, [{type:"bar",label:"Obrat bez DPH (Kč)",data:E.obrat,backgroundColor:"rgba(255,107,44,.8)",borderRadius:3}]);
+    single(`ch-${key}-sklik`, [{type:"bar",label:"Náklady (Kč)",data:S.cost,backgroundColor:SL,borderRadius:3},
+                               {type:"line",label:"Výnosy (Kč)",data:S.rev,borderColor:OR,backgroundColor:OR,tension:.3,pointRadius:2.5}]);
+    single(`ch-${key}-ga4`, [{type:"bar",label:"Výnosy z položiek (Kč)",data:A.rev,backgroundColor:"rgba(255,107,44,.8)",borderRadius:3}]);
+  }
+  if(metaCmp){
+    grouped(`ch-${key}-meta`, M.value, Mp.value, "Hodnota "+opts.curShort, "Hodnota "+(opts.metaPrevShort||opts.prevShort));
+  } else {
+    single(`ch-${key}-meta`, [{type:"bar",label:"Náklady (Kč)",data:M.spend,backgroundColor:SL,borderRadius:3},
+                              {type:"line",label:"Hodnota nákupov (Kč)",data:M.value,borderColor:OR,backgroundColor:OR,tension:.3,pointRadius:2.5}]);
+  }
+  /* google ads, grouped value comparison */
+  new Chart(document.getElementById(`ch-${key}-gads`),{type:"bar",
+    data:{labels,datasets:[
+      {label:"Hodnota konv. "+opts.prevShort,data:GAprev.value,backgroundColor:SL,borderRadius:3},
+      {label:"Hodnota konv. "+opts.curShort,data:GAcur.value,backgroundColor:"rgba(255,107,44,.8)",borderRadius:3}
+    ]},options:mkOpts(" Kč")});
+
+  /* GA4 channels, grouped bars by channel */
+  const chShown = CHcur.rows.map((rc,i)=>({c:rc.channel,cur:rc.rev,prev:CHprev.rows[i].rev}))
+                            .filter(x=>x.cur>0||x.prev>0);
+  new Chart(document.getElementById(`ch-${key}-channels`),{type:"bar",
+    data:{labels:chShown.map(x=>x.c),datasets:[
+      {label:"Výnosy "+opts.prevShort,data:chShown.map(x=>x.prev),backgroundColor:SL,borderRadius:3},
+      {label:"Výnosy "+opts.curShort,data:chShown.map(x=>x.cur),backgroundColor:"rgba(255,107,44,.8)",borderRadius:3}
+    ]},options:{maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
+      plugins:{legend:{position:"bottom"},tooltip:{callbacks:{label:c=>c.dataset.label+": "+fmt(c.parsed.y)+" Kč"}}},
+      scales:{y:{grid:{color:"#eef0f7"},ticks:{callback:v=>fmt(v)}},x:{grid:{display:false},ticks:{maxRotation:30,minRotation:0,autoSkip:false,font:{size:10}}}}}});
+
+  /* blended cost & ROAS, two-bar */
+  const twoBar = (id, prevV, curV, unit, dec) => new Chart(document.getElementById(id),{type:"bar",
+    data:{labels:[opts.prevShort,opts.curShort],datasets:[{data:[prevV,curV],
+      backgroundColor:["rgba(124,131,176,.55)","rgba(255,107,44,.85)"],borderRadius:5}]},
+    options:{maintainAspectRatio:false,plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:c=>fmt(c.parsed.y,dec||0)+(unit||"")}}},
+      scales:{y:{grid:{color:"#eef0f7"},ticks:{callback:v=>fmt(v,dec||0)}},x:{grid:{display:false}}}}});
+  twoBar(`ch-${key}-blendcost`, Bp.cost, Bc.cost, " Kč", 0);  new Chart(document.getElementById(`ch-${key}-blendroas`),{type:"bar",
+    data:{labels:[opts.prevShort,opts.curShort],datasets:[
+      {label:"Atribuovaný ROAS",data:[Bp.roas_attr,Bc.roas_attr],backgroundColor:"rgba(255,107,44,.85)",borderRadius:5},
+      {label:"Blended ROAS (MER)",data:[Bp.roas_eshop,Bc.roas_eshop],backgroundColor:"rgba(124,131,176,.55)",borderRadius:5}
+    ]},options:{maintainAspectRatio:false,plugins:{legend:{position:"bottom"},
+      tooltip:{callbacks:{label:c=>c.dataset.label+": "+fmt(c.parsed.y,2)}}},
+      scales:{y:{grid:{color:"#eef0f7"},ticks:{callback:v=>fmt(v,1)}},x:{grid:{display:false}}}}});
+}
+
+Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+Chart.defaults.color = "#7c83b0";
+
+buildTab("t1", document.getElementById("tab-t1"), {
+  compare:true, label:"Január až máj 2026 oproti januáru až máju 2025",
+  curLabel:"januáru až máju 2026", prevLabel:"január až máj 2025",
+  curShort:"2026", prevShort:"2025"
+});
+buildTab("t2", document.getElementById("tab-t2"), {
+  compare:true, label:"Jún 2025 až máj 2026 oproti júnu 2024 až máju 2025",
+  curLabel:"júnu 2025 až máju 2026", prevLabel:"jún 2024 až máj 2025",
+  curShort:"jún 25 až máj 26", prevShort:"jún 24 až máj 25"
+});
+
+/* tabs */
+document.getElementById("tabs").addEventListener("click", e=>{
+  const b = e.target.closest(".tab-btn"); if(!b) return;
+  document.querySelectorAll(".tab-btn").forEach(x=>x.classList.toggle("active", x===b));
+  document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active", x.id==="tab-"+b.dataset.tab));
+});
+
+/* META creative type, whole period */
+(function(){
+  const MC = D.meta_creative;
+  const rows = MC.rows;
+  // best by ROAS among the named creative types (exclude Ostatné)
+  const named = rows.filter(r=>r.typ!=="Ostatné");
+  const best = named.reduce((a,b)=>b.roas>a.roas?b:a);
+  const topVol = rows.reduce((a,b)=>b.value>a.value?b:a);
+  document.getElementById("kpi-meta-cr").innerHTML = [
+    {l:"Najvyšší ROAS", v:best.typ, u:"ROAS "+fmt(best.roas,2)},
+    {l:"Najviac hodnoty nákupov", v:topVol.typ, u:fmt(topVol.value_share*100,1)+" % hodnoty"},
+    {l:"ROAS Meta spolu", v:fmt(MC.roas,2)},
+    {l:"Hodnota nákupov spolu", v:czk(MC.tot_value)}
+  ].map(i=>`<div class="kpi"><div class="l">${i.l}</div><div class="fig">${i.v}</div>${i.u?`<div class="u">${i.u}</div>`:""}</div>`).join("");
+
+  const maxRoas = Math.max(...rows.map(r=>r.roas));
+  const body = rows.map(r=>{
+    let tag = "";
+    if(r.typ===best.typ) tag = '<span class="tag top">najvyšší ROAS</span>';
+    else if(r.typ==="Ostatné") tag = '<span class="tag off">neoznačené</span>';
+    const w = Math.max(2, r.roas/maxRoas*100);
+    return `<tr><td class="name">${r.typ}${tag}</td>
+      <td>${fmt(r.spend)} Kč</td><td>${fmt(r.value)} Kč</td><td>${fmt(r.purch)}</td>
+      <td><span class="barcell"><span class="bg" style="width:${w}%"></span><span class="tx">${fmt(r.roas,2)}</span></span></td>
+      <td>${czk(r.cpa,0)}</td><td>${pct(r.cr)}</td><td>${czk(r.aov,0)}</td></tr>`;}).join("");
+  document.getElementById("tbl-meta-cr").innerHTML = `
+    <thead><tr><th>Typ kreatívy</th><th>Náklady</th><th>Hodnota nákupov</th><th>Nákupy</th><th>ROAS</th><th>Cena/nákup</th><th>Konverzný pomer</th><th>Priem. hodnota nákupu</th></tr></thead>
+    <tbody>${body}</tbody>
+    <tfoot><tr><td>Spolu</td><td>${fmt(MC.tot_spend)} Kč</td><td>${fmt(MC.tot_value)} Kč</td><td>${fmt(MC.tot_purch)}</td><td>${fmt(MC.roas,2)}</td><td colspan="3"></td></tr></tfoot>`;
+
+  const labels = rows.map(r=>r.typ);
+  const grid={color:"#eef0f7"};
+  new Chart(document.getElementById("ch-meta-cr-roas"),{type:"bar",
+    data:{labels,datasets:[{label:"ROAS",data:rows.map(r=>r.roas),
+      backgroundColor:rows.map(r=>r.typ===best.typ?"rgba(255,107,44,.85)":"rgba(124,131,176,.55)"),borderRadius:4}]},
+    options:{maintainAspectRatio:false,plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:c=>"ROAS "+fmt(c.parsed.y,2)}}},
+      scales:{y:{grid,ticks:{callback:v=>fmt(v,1)}},x:{grid:{display:false}}}}});
+
+  new Chart(document.getElementById("ch-meta-cr-share"),{type:"bar",
+    data:{labels,datasets:[
+      {label:"Podiel na nákladoch",data:rows.map(r=>+(r.cost_share*100).toFixed(1)),backgroundColor:"rgba(124,131,176,.55)",borderRadius:4},
+      {label:"Podiel na hodnote",data:rows.map(r=>+(r.value_share*100).toFixed(1)),backgroundColor:"rgba(255,107,44,.8)",borderRadius:4}
+    ]},
+    options:{maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
+      plugins:{legend:{position:"bottom"},tooltip:{callbacks:{label:c=>c.dataset.label+": "+fmt(c.parsed.y,1)+" %"}}},
+      scales:{y:{grid,ticks:{callback:v=>fmt(v)+" %"}},x:{grid:{display:false}}}}});
+})();
+
+/* GADS whole-period */
+(function(){
+  const G = D.gads;
+  document.getElementById("kpi-gads").innerHTML = [
+    {l:"ROAS", v:fmt(G.roas,2)},{l:"PNO", v:pct(G.pno)},
+    {l:"Hodnota konverzií", v:czk(G.value)},{l:"Náklady", v:czk(G.cost)},
+    {l:"Konverzie", v:fmt(G.conv)},{l:"CPA", v:czk(G.cpa,2)}
+  ].map(i=>`<div class="kpi"><div class="l">${i.l}</div><div class="fig">${i.v}</div></div>`).join("");
+  const rows=G.campaigns, maxC=Math.max(...rows.map(r=>r.cost));
+  const topName = rows.reduce((a,b)=>b.value>a.value?b:a).name;
+  document.getElementById("tbl-gads").innerHTML = `
+    <thead><tr><th>Kampaň</th><th>Náklady</th><th>Hodnota konv.</th><th>Konverzie</th><th>ROAS</th></tr></thead>
+    <tbody>${rows.map(r=>{
+      let tag = r.name===topName ? '<span class="tag top">ťahá výkon</span>' : (r.roas!=null&&r.roas<1 ? '<span class="tag low">ROAS pod 1</span>' : '');
+      if(r.status!=="Aktívne") tag += ' <span class="tag off">pozastavená</span>';
+      const w = Math.max(2, r.cost/maxC*100);
+      return `<tr><td class="name">${r.name}${tag}</td>
+        <td><span class="barcell"><span class="bg" style="width:${w}%"></span><span class="tx">${fmt(r.cost)} Kč</span></span></td>
+        <td>${fmt(r.value)} Kč</td><td>${fmt(r.conv)}</td>
+        <td class="${r.roas<1?'bad-num':''}">${fmt(r.roas,2)}</td></tr>`;}).join("")}</tbody>
+    <tfoot><tr><td>Spolu</td><td>${fmt(G.cost)} Kč</td><td>${fmt(G.value)} Kč</td><td>${fmt(G.conv)}</td><td>${fmt(G.roas,2)}</td></tr></tfoot>`;
+})();
+</script>
+</body>
+</html>
