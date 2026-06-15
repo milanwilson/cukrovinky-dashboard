@@ -228,7 +228,7 @@ function buildTab(key, el, opts){
   h += `</tbody><tfoot><tr><td>Spolu</td><td>${czk(Bp.cost)}</td><td>${czk(Bc.cost)}</td><td>${dCell(Bc.cost,Bp.cost,false)}</td>
     <td>${fmt(Bp.roas_attr,2)}</td><td>${fmt(Bc.roas_attr,2)}</td><td>${dCell(Bc.roas_attr,Bp.roas_attr)}</td></tr></tfoot></table></div>
     <div class="grid2" style="margin-top:18px">
-      <div><h3 style="font-size:14px;margin-bottom:10px">Reklamné náklady po mesiacoch (Kč)</h3><div class="chart-box" style="height:280px"><canvas id="ch-${key}-blendcost"></canvas></div></div>
+      <div><h3 style="font-size:14px;margin-bottom:10px">Reklamné náklady po mesiacoch (${SYM()})</h3><div class="chart-box" style="height:280px"><canvas id="ch-${key}-blendcost"></canvas></div></div>
       <div><h3 style="font-size:14px;margin-bottom:10px">Atribuovaný ROAS po mesiacoch</h3><div class="chart-box" style="height:280px"><canvas id="ch-${key}-blendroas"></canvas></div></div>
     </div>
   </div></section>`;
@@ -400,16 +400,16 @@ function buildTab(key, el, opts){
     grouped(`ch-${key}-sklik`, S.rev, Sp.rev, "Výnosy "+opts.curShort, "Výnosy "+opts.prevShort);
     grouped(`ch-${key}-ga4`, A.rev, Ap.rev, "Výnosy "+opts.curShort, "Výnosy "+opts.prevShort);
   } else {
-    single(`ch-${key}-eshop`, [{type:"bar",label:"Obrat bez DPH (Kč)",data:E.obrat,backgroundColor:"rgba(255,107,44,.8)",borderRadius:3}]);
-    single(`ch-${key}-sklik`, [{type:"bar",label:"Náklady (Kč)",data:S.cost,backgroundColor:SL,borderRadius:3},
-                               {type:"line",label:"Výnosy (Kč)",data:S.rev,borderColor:OR,backgroundColor:OR,tension:.3,pointRadius:2.5}]);
-    single(`ch-${key}-ga4`, [{type:"bar",label:"Výnosy z položiek (Kč)",data:A.rev,backgroundColor:"rgba(255,107,44,.8)",borderRadius:3}]);
+    single(`ch-${key}-eshop`, [{type:"bar",label:"Obrat bez DPH ("+SYM()+")",data:E.obrat,backgroundColor:"rgba(255,107,44,.8)",borderRadius:3}]);
+    single(`ch-${key}-sklik`, [{type:"bar",label:"Náklady ("+SYM()+")",data:S.cost,backgroundColor:SL,borderRadius:3},
+                               {type:"line",label:"Výnosy ("+SYM()+")",data:S.rev,borderColor:OR,backgroundColor:OR,tension:.3,pointRadius:2.5}]);
+    single(`ch-${key}-ga4`, [{type:"bar",label:"Výnosy z položiek ("+SYM()+")",data:A.rev,backgroundColor:"rgba(255,107,44,.8)",borderRadius:3}]);
   }
   if(metaCmp){
     grouped(`ch-${key}-meta`, M.value, Mp.value, "Hodnota "+opts.curShort, "Hodnota "+(opts.metaPrevShort||opts.prevShort));
   } else {
-    single(`ch-${key}-meta`, [{type:"bar",label:"Náklady (Kč)",data:M.spend,backgroundColor:SL,borderRadius:3},
-                              {type:"line",label:"Hodnota nákupov (Kč)",data:M.value,borderColor:OR,backgroundColor:OR,tension:.3,pointRadius:2.5}]);
+    single(`ch-${key}-meta`, [{type:"bar",label:"Náklady ("+SYM()+")",data:M.spend,backgroundColor:SL,borderRadius:3},
+                              {type:"line",label:"Hodnota nákupov ("+SYM()+")",data:M.value,borderColor:OR,backgroundColor:OR,tension:.3,pointRadius:2.5}]);
   }
   /* google ads, grouped value comparison */
   NC(document.getElementById(`ch-${key}-gads`),{type:"bar",
